@@ -20,6 +20,7 @@ router.post('/createPersonandParty',controller.createPersonandParty)
 router.get('/addOrderItems',controller.getOrderItems)
 router.get('/getAllOrders',controller.getAllOrders)
 router.get('/createPersonParty',controller.$createPersonParty)
+router.put('/updateOrder',controller.updateOrder)
 
 module.exports=router
 

@@ -1,6 +1,6 @@
 const db = require("../db")
 const express = require('express')
-const jwt=require('jsonwebtoken')
+const jwt = require('jsonwebtoken')
 require('dotenv').config();
 
 const createOrderItem = async (req, res) => {
@@ -212,6 +212,11 @@ const getOrderItems = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   try {
+    const auth = req.headers.authorization.split(" ")[1]
+    const decode = jwt.decode(auth)
+
+    const decoded_Partyid = decode.data[0].party_id
+
     const queryString_order_header = "select order_id,order_name,currency_uom_id,sales_channel_enum_id,status_id,placed_date,grand_total from order_header where order_id = ?";
 
     const queryString_order_item = " select order_item_seq_id,product_id,item_description,quantity,unit_amount from order_item where order_id =?";
@@ -269,14 +274,14 @@ const getAllOrders = async (req, res) => {
 
 const $createPersonParty = async (req, res) => {
   try {
- 
-    const { party_id,party_typ_enum_id,salutation,first_name,middle_name, last_name,gender,birth_date,maritial_status_enum_id,occupation } = req.body
+
+    const { party_id, party_typ_enum_id, salutation, first_name, middle_name, last_name, gender, birth_date, maritial_status_enum_id, occupation } = req.body
     const queryStringCheck_isPartyExists = 'select * from party where party_id =?';
     const queryStringCreateNewPerson = "insert into person(party_id,salutation,first_name,middle_name,last_name,gender,birth_date,maritial_status_enum_id,occupation) values(?,?,?,?,?,?,?,?,?)";
     const queryStringcreateNewParty = "insert into party(party_id,party_typ_enum_id) values(?,?)"
     const queryString_getParty = "select * from party where party_id = ?";
     const queryString_getPerson = "select * from person where party_id =?";
-   
+
     db.query(queryStringCheck_isPartyExists, [party_id], (err, result) => {
       if (err) {
         return res.status(400).send({
@@ -285,7 +290,7 @@ const $createPersonParty = async (req, res) => {
         })
       }
       if (!result.length) {
-        db.query(queryStringcreateNewParty, [party_id,party_typ_enum_id], (err, result) => {
+        db.query(queryStringcreateNewParty, [party_id, party_typ_enum_id], (err, result) => {
           if (err) {
             return res.status(400).send({
               err: err,
@@ -319,14 +324,14 @@ const $createPersonParty = async (req, res) => {
                     err_message: "Error Fetching Person Table Entry"
                   })
                 }
-                const token=jwt.sign({data:[resultPerson[0]]},process.env.HOTWAXSECRET)
+                const token = jwt.sign({ data: [resultPerson[0]] }, process.env.HOTWAXSECRET)
                 console.log("Query 4 Executed")
                 return res.status(200).send({
                   success: true,
                   message: "Party and Person Created Successfully!",
                   party: resultParty,
                   person: resultPerson,
-                  token:token
+                  token: token
                 })
               })
 
@@ -335,39 +340,39 @@ const $createPersonParty = async (req, res) => {
           })
         })
       }
-      else{
-        db.query(queryStringCreateNewPerson,[party_id, salutation, first_name, middle_name, last_name, gender, birth_date, maritial_status_enum_id, occupation],(err,result)=>{
-          if(err){
+      else {
+        db.query(queryStringCreateNewPerson, [party_id, salutation, first_name, middle_name, last_name, gender, birth_date, maritial_status_enum_id, occupation], (err, result) => {
+          if (err) {
             return res.status(400).send({
-              success:false,
-              err:err,
-              err_message:"Error creating new Person"
+              success: false,
+              err: err,
+              err_message: "Error creating new Person"
             })
           }
-          db.query(queryString_getParty,[party_id],(err,resultParty)=>{
-            if(err){
+          db.query(queryString_getParty, [party_id], (err, resultParty) => {
+            if (err) {
               res.status(400).send({
-                success:false,
-                err:err,
-                err_message:"Error fetching party entry"
+                success: false,
+                err: err,
+                err_message: "Error fetching party entry"
               })
             }
-          db.query(queryString_getPerson,[party_id],(err,resultPerson)=>{
-            if(err){
-              return res.status(400).send({
-                success:false,
-                err:err,
-                err_message:"Error fetching Person entry"
+            db.query(queryString_getPerson, [party_id], (err, resultPerson) => {
+              if (err) {
+                return res.status(400).send({
+                  success: false,
+                  err: err,
+                  err_message: "Error fetching Person entry"
+                })
+              }
+              const token = jwt.sign({ data: [resultPerson[0]] }, process.env.HOTWAXSECRET)
+              return res.status(200).send({
+                success: true,
+                message: "Successfuly created Person",
+                person: resultPerson,
+                token: token
               })
-            }
-            const token = jwt.sign({ data: [resultPerson[0]] }, process.env.HOTWAXSECRET)
-            return res.status(200).send({
-              success:true,
-              message:"Successfuly created Person",
-              person:resultPerson,
-              token:token
             })
-          })
           })
         })
       }
@@ -376,9 +381,53 @@ const $createPersonParty = async (req, res) => {
   catch (err) {
     return res.status(400).send({
       success: false,
+      err: err
+    })
+  }
+}
+
+const updateOrder=async(req,res)=>{
+  try{
+     const queryString =' update order_header set order_name =? where order_id =?'
+     const queryStringGetUpdatedRecord='select * from order_header  where order_id=? limit 1'
+     const{order_id,order_name}=req.body
+
+     db.query(queryString,[order_name,order_id],(err,result)=>{
+      if(!order_id||!order_name){
+        return res.status(404).send({
+          success:false,
+          message:"Please Enter order_id and order_name "
+        })
+      }
+      if(err){
+        return res.status(400).send({
+          success:false,
+          err:err
+        })
+      }
+      db.query(queryStringGetUpdatedRecord,[order_id],(err,result)=>{
+      if(err){
+        return res.status(400).send({
+          success:false,
+          err:err
+        })
+      }
+      return res.status(200).send({
+        success:true,
+        result:result
+      })
+      })
+      
+     })
+
+  }
+  catch(err){
+    return res.status(400).send({
+      success:false,
       err:err
     })
   }
 }
 
-module.exports = { createOrder, addOrderPart, createOrderItem, createPersonandParty, getOrderItems, getAllOrders, $createPersonParty }
+
+module.exports = { createOrder, addOrderPart, createOrderItem, createPersonandParty, getOrderItems, getAllOrders, $createPersonParty ,updateOrder}
